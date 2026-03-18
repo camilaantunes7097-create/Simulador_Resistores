@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Código de Cores de Resistores</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        .color-btn {
+            width: 100%;
+            height: 36px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        .color-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .color-btn.selected {
+            border-color: #3b82f6; /* Blue ring */
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+            transform: scale(1.05);
+        }
+
+        /* Especial para cores claras para não sumir no fundo e garantir leitura */
+        .color-white, .color-yellow, .color-silver, .color-gold {
+            color: #1e293b;
+            text-shadow: none;
+            border: 1px solid #cbd5e1;
+        }
+
+        /* Ocultar barra de rolagem mas permitir scroll */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header / Navigation -->
+    <header class="bg-slate-900 text-white shadow-lg z-10">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <h1 class="text-xl sm:text-2xl font-bold flex items-center gap-2">
+                <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                Código de Cores de Resistores
+            </h1>
+            <nav class="flex gap-2 bg-slate-800 p-1 rounded-lg">
+                <button id="tab-sim" onclick="switchTab('sim')" class="px-6 py-2 rounded-md font-medium transition-colors bg-blue-600 text-white shadow">Simulador</button>
+                <button id="tab-exe" onclick="switchTab('exe')" class="px-6 py-2 rounded-md font-medium transition-colors text-slate-300 hover:text-white hover:bg-slate-700">Exercícios</button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-6xl mx-auto w-full p-4 flex flex-col">
+        
+        <!-- ==================== TAB 1: SIMULADOR ==================== -->
+        <div id="view-sim" class="flex-1 flex flex-col md:flex-row gap-8 animate-fade-in">
+            
+            <!-- Painel Esquerdo: Visualização -->
+            <div class="w-full md:w-1/2 flex flex-col gap-6">
+                <!-- Gráfico do Resistor -->
+                <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center justify-center">
+                    <h2 class="text-lg font-semibold text-slate-500 mb-6 w-full text-center">Visualização (4 Faixas)</h2>
+                    
+                    <svg viewBox="0 0 300 100" class="w-full max-w-md drop-shadow-md">
+                        <!-- Fios -->
+                        <line x1="10" y1="50" x2="290" y2="50" stroke="#94a3b8" stroke-width="6" stroke-linecap="round"/>
+                        <!-- Corpo -->
+                        <rect x="60" y="20" width="180" height="60" rx="15" fill="#f3c98b" stroke="#d97706" stroke-width="2"/>
+                        <!-- Faixas -->
+                        <rect id="sim-band-0" x="80" y="20" width="15" height="60" fill="#8B4513"/>
+                        <rect id="sim-band-1" x="115" y="20" width="15" height="60" fill="#000000"/>
+                        <rect id="sim-band-2" x="150" y="20" width="15" height="60" fill="#FF0000"/>
+                        <rect id="sim-band-3" x="205" y="20" width="15" height="60" fill="#FFD700"/>
+                        <!-- Brilho (para dar aspecto 3D) -->
+                        <rect x="60" y="20" width="180" height="20" rx="15" fill="white" opacity="0.2"/>
+                    </svg>
+
+                    <!-- Resultado -->
+                    <div class="mt-8 bg-slate-900 text-white px-8 py-4 rounded-xl shadow-inner text-center w-full max-w-sm border-4 border-slate-800">
+                        <p class="text-sm text-slate-400 font-medium mb-1 uppercase tracking-wider">Valor Calculado</p>
+                        <div id="sim-result" class="text-4xl font-mono font-bold text-amber-400">1.0 kΩ</div>
+                        <div id="sim-tolerance" class="text-lg font-mono text-slate-300 mt-1">± 5%</div>
+                    </div>
+                </div>
+                
+                <!-- Tabela de Referência Rápida -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-sm overflow-x-auto">
+                    <h3 class="font-semibold text-slate-700 mb-3">Como funciona a leitura (4 faixas)?</h3>
+                    <ul class="list-disc pl-5 space-y-2 text-slate-600">
+                        <li><strong>Faixa 1:</strong> Primeiro dígito significativo.</li>
+                        <li><strong>Faixa 2:</strong> Segundo dígito significativo.</li>
+                        <li><strong>Faixa 3:</strong> Multiplicador (quantidade de zeros).</li>
+                        <li><strong>Faixa 4:</strong> Tolerância (margem de erro do componente).</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Painel Direito: Controles -->
+            <div class="w-full md:w-1/2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h2 class="text-xl font-bold text-slate-800 mb-6 border-b pb-2">Selecione as Cores</h2>
+                
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Faixa 1 -->
+                    <div>
+                        <h3 class="font-semibold text-sm text-slate-500 mb-3">1ª Faixa (Dígito 1)</h3>
+                        <div id="grid-band-0" class="flex flex-col gap-2"></div>
+                    </div>
+                    <!-- Faixa 2 -->
+                    <div>
+                        <h3 class="font-semibold text-sm text-slate-500 mb-3">2ª Faixa (Dígito 2)</h3>
+                        <div id="grid-band-1" class="flex flex-col gap-2"></div>
+                    </div>
+                    <!-- Faixa 3 -->
+                    <div>
+                        <h3 class="font-semibold text-sm text-slate-500 mb-3">3ª Faixa (Multipl.)</h3>
+                        <div id="grid-band-2" class="flex flex-col gap-2"></div>
+                    </div>
+                    <!-- Faixa 4 -->
+                    <div>
+                        <h3 class="font-semibold text-sm text-slate-500 mb-3">4ª Faixa (Toler.)</h3>
+                        <div id="grid-band-3" class="flex flex-col gap-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== TAB 2: EXERCÍCIOS ==================== -->
+        <div id="view-exe" class="flex-1 hidden flex-col items-center justify-center animate-fade-in max-w-3xl mx-auto w-full">
+            
+            <div class="bg-white p-8 rounded-3xl shadow-lg border border-slate-200 w-full">
+                
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-slate-800">Qual o valor do resistor?</h2>
+                    <div class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-bold text-sm">
+                        Pontuação: <span id="score">0</span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 py-10 rounded-2xl border border-slate-100 flex justify-center mb-8 relative">
+                    <svg viewBox="0 0 300 100" class="w-full max-w-md drop-shadow-md">
+                        <line x1="10" y1="50" x2="290" y2="50" stroke="#94a3b8" stroke-width="6" stroke-linecap="round"/>
+                        <rect x="60" y="20" width="180" height="60" rx="15" fill="#f3c98b" stroke="#d97706" stroke-width="2"/>
+                        <rect id="exe-band-0" x="80" y="20" width="15" height="60" fill="#8B4513"/>
+                        <rect id="exe-band-1" x="115" y="20" width="15" height="60" fill="#000000"/>
+                        <rect id="exe-band-2" x="150" y="20" width="15" height="60" fill="#FF0000"/>
+                        <rect id="exe-band-3" x="205" y="20" width="15" height="60" fill="#FFD700"/>
+                        <rect x="60" y="20" width="180" height="20" rx="15" fill="white" opacity="0.2"/>
+                    </svg>
+                </div>
+
+                <!-- Formulário de Resposta -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Valor</label>
+                        <input type="number" id="exe-input-val" step="any" placeholder="Ex: 47" class="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-lg font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Unidade</label>
+                        <select id="exe-input-unit" class="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-lg">
+                            <option value="1">Ω (Ohms)</option>
+                            <option value="1000">kΩ (Kilo)</option>
+                            <option value="1000000">MΩ (Mega)</option>
+                            <option value="1000000000">GΩ (Giga)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Tolerância</label>
+                        <select id="exe-input-tol" class="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-lg">
+                            <option value="">Selecione...</option>
+                            <option value="1">± 1% (Marrom)</option>
+                            <option value="2">± 2% (Vermelho)</option>
+                            <option value="0.5">± 0.5% (Verde)</option>
+                            <option value="0.25">± 0.25% (Azul)</option>
+                            <option value="0.1">± 0.1% (Violeta)</option>
+                            <option value="0.05">± 0.05% (Cinza)</option>
+                            <option value="5">± 5% (Ouro)</option>
+                            <option value="10">± 10% (Prata)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Feedback Area -->
+                <div id="exe-feedback" class="hidden rounded-lg p-4 mb-6 flex items-start gap-3">
+                    <div id="exe-feedback-icon" class="mt-1"></div>
+                    <div>
+                        <h4 id="exe-feedback-title" class="font-bold text-lg"></h4>
+                        <p id="exe-feedback-text" class="text-slate-700"></p>
+                    </div>
+                </div>
+
+                <div class="flex gap-4">
+                    <button id="btn-check" onclick="checkExercise()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold text-lg transition-colors shadow-md">
+                        Verificar Resposta
+                    </button>
+                    <button id="btn-next" onclick="generateExercise()" class="hidden flex-1 bg-slate-800 hover:bg-slate-900 text-white py-3 rounded-xl font-bold text-lg transition-colors shadow-md">
+                        Próximo Resistor ➔
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // --- BASE DE DADOS DE CORES ---
+        const COLORS = {
+            black:  { hex: '#000000', val: 0, mult: 1,         name: 'Preto', txtClass: 'color-white' },
+            brown:  { hex: '#8B4513', val: 1, mult: 10,        tol: 1, name: 'Marrom', txtClass: '' },
+            red:    { hex: '#FF0000', val: 2, mult: 100,       tol: 2, name: 'Vermelho', txtClass: '' },
+            orange: { hex: '#FF8C00', val: 3, mult: 1000,      name: 'Laranja', txtClass: '' },
+            yellow: { hex: '#FFD700', val: 4, mult: 10000,     name: 'Amarelo', txtClass: 'color-yellow' },
+            green:  { hex: '#008000', val: 5, mult: 100000,    tol: 0.5, name: 'Verde', txtClass: '' },
+            blue:   { hex: '#0000FF', val: 6, mult: 1000000,   tol: 0.25, name: 'Azul', txtClass: '' },
+            violet: { hex: '#9400D3', val: 7, mult: 10000000,  tol: 0.1, name: 'Violeta', txtClass: '' },
+            gray:   { hex: '#808080', val: 8, mult: 100000000, tol: 0.05, name: 'Cinza', txtClass: '' },
+            white:  { hex: '#FFFFFF', val: 9, mult: 1000000000, name: 'Branco', txtClass: 'color-white' },
+            gold:   { hex: '#D4AF37', mult: 0.1,  tol: 5,  name: 'Ouro', txtClass: 'color-gold' },
+            silver: { hex: '#C0C0C0', mult: 0.01, tol: 10, name: 'Prata', txtClass: 'color-silver' }
+        };
+
+        // Regras de quais cores podem aparecer em cada faixa (Para Resistor de 4 faixas)
+        // Faixa 1 (Dígito 1): Preto não é usado como primeiro dígito.
+        const BAND_0_COLORS = ['brown', 'red', 'orange', 'yellow', 'green', 'blue', 'violet', 'gray', 'white'];
+        // Faixa 2 (Dígito 2): 0 a 9
+        const BAND_1_COLORS = ['black', 'brown', 'red', 'orange', 'yellow', 'green', 'blue', 'violet', 'gray', 'white'];
+        // Faixa 3 (Multiplicador): 0 a 9 + Prata e Ouro
+        const BAND_2_COLORS = ['black', 'brown', 'red', 'orange', 'yellow', 'green', 'blue', 'violet', 'gray', 'white', 'gold', 'silver'];
+        // Faixa 4 (Tolerância):
+        const BAND_3_COLORS = ['brown', 'red', 'green', 'blue', 'violet', 'gray', 'gold', 'silver'];
+
+        const BAND_CONFIGS = [BAND_0_COLORS, BAND_1_COLORS, BAND_2_COLORS, BAND_3_COLORS];
+
+        // ESTADO GLOBAL
+        let simState = ['brown', 'black', 'red', 'gold']; // Estado inicial do simulador: 1kΩ 5%
+        let exeState = { colors: [], targetRawValue: 0, targetTolerance: 0 };
+        let score = 0;
+
+        // --- FUNÇÕES DE LÓGICA / MATEMÁTICA ---
+
+        function calculateResistance(colors) {
+            const digit1 = COLORS[colors[0]].val;
+            const digit2 = COLORS[colors[1]].val;
+            const multiplier = COLORS[colors[2]].mult;
+            const tolerance = COLORS[colors[3]].tol;
+            
+            const rawValue = ((digit1 * 10) + digit2) * multiplier;
+            return { rawValue, tolerance };
+        }
+
+        function formatResistance(value) {
+            if (value >= 1e9) return { num: +(value / 1e9).toFixed(2), unit: 'GΩ' };
+            if (value >= 1e6) return { num: +(value / 1e6).toFixed(2), unit: 'MΩ' };
+            if (value >= 1e3) return { num: +(value / 1e3).toFixed(2), unit: 'kΩ' };
+            return { num: +(value).toFixed(2), unit: 'Ω' };
+        }
+
+        // --- SIMULADOR ---
+
+        function initSimulator() {
+            // Renderiza os botões de cor para cada coluna
+            BAND_CONFIGS.forEach((validColors, bandIdx) => {
+                const container = document.getElementById(`grid-band-${bandIdx}`);
+                container.innerHTML = '';
+                
+                validColors.forEach(colorKey => {
+                    const colorData = COLORS[colorKey];
+                    const btn = document.createElement('button');
+                    btn.className = `color-btn ${colorData.txtClass}`;
+                    btn.style.backgroundColor = colorData.hex;
+                    btn.innerText = colorData.name;
+                    btn.onclick = () => selectSimColor(bandIdx, colorKey);
+                    
+                    // Adicionar um ID para facilitar seleção via JS
+                    btn.id = `btn-${bandIdx}-${colorKey}`;
+                    container.appendChild(btn);
+                });
+            });
+
+            updateSimUI();
+        }
+
+        function selectSimColor(bandIdx, colorKey) {
+            simState[bandIdx] = colorKey;
+            updateSimUI();
+        }
+
+        function updateSimUI() {
+            // 1. Atualizar a imagem SVG
+            simState.forEach((colorKey, i) => {
+                document.getElementById(`sim-band-${i}`).setAttribute('fill', COLORS[colorKey].hex);
+            });
+
+            // 2. Atualizar seleções visuais nos botões
+            simState.forEach((selectedColor, bandIdx) => {
+                const container = document.getElementById(`grid-band-${bandIdx}`);
+                Array.from(container.children).forEach(btn => btn.classList.remove('selected'));
+                document.getElementById(`btn-${bandIdx}-${selectedColor}`).classList.add('selected');
+            });
+
+            // 3. Calcular e mostrar o valor
+            const calc = calculateResistance(simState);
+            const formatted = formatResistance(calc.rawValue);
+            
+            document.getElementById('sim-result').innerText = `${formatted.num} ${formatted.unit}`;
+            document.getElementById('sim-tolerance').innerText = `± ${calc.tolerance}%`;
+        }
+
+        // --- EXERCÍCIOS ---
+
+        function generateExercise() {
+            // Resetar UI
+            document.getElementById('exe-input-val').value = '';
+            document.getElementById('exe-input-unit').value = '1';
+            document.getElementById('exe-input-tol').value = '';
+            
+            document.getElementById('exe-feedback').classList.add('hidden');
+            document.getElementById('btn-check').classList.remove('hidden');
+            document.getElementById('btn-next').classList.add('hidden');
+
+            // Gerar novas cores aleatórias
+            exeState.colors = [
+                BAND_0_COLORS[Math.floor(Math.random() * BAND_0_COLORS.length)],
+                BAND_1_COLORS[Math.floor(Math.random() * BAND_1_COLORS.length)],
+                BAND_2_COLORS[Math.floor(Math.random() * BAND_2_COLORS.length)],
+                ['gold', 'silver', 'brown'][Math.floor(Math.random() * 3)] // Limitar a tolerâncias mais comuns em exs básicos
+            ];
+
+            // Atualizar SVG do Exercício
+            exeState.colors.forEach((colorKey, i) => {
+                document.getElementById(`exe-band-${i}`).setAttribute('fill', COLORS[colorKey].hex);
+            });
+
+            // Armazenar os alvos para verificação
+            const calc = calculateResistance(exeState.colors);
+            exeState.targetRawValue = calc.rawValue;
+            exeState.targetTolerance = calc.tolerance;
+        }
+
+        function checkExercise() {
+            const userNumStr = document.getElementById('exe-input-val').value;
+            const userUnit = parseFloat(document.getElementById('exe-input-unit').value);
+            const userTolStr = document.getElementById('exe-input-tol').value;
+
+            if (!userNumStr || !userTolStr) {
+                alert("Por favor, preencha o valor e selecione a tolerância.");
+                return;
+            }
+
+            const userRawValue = parseFloat(userNumStr.replace(',','.')) * userUnit;
+            const userTol = parseFloat(userTolStr);
+
+            // Permitir pequena margem de erro por causa de ponto flutuante em JS
+            const isValueCorrect = Math.abs(userRawValue - exeState.targetRawValue) < 0.001;
+            const isTolCorrect = userTol === exeState.targetTolerance;
+
+            const feedbackDiv = document.getElementById('exe-feedback');
+            const feedbackIcon = document.getElementById('exe-feedback-icon');
+            const feedbackTitle = document.getElementById('exe-feedback-title');
+            const feedbackText = document.getElementById('exe-feedback-text');
+
+            feedbackDiv.classList.remove('hidden', 'bg-red-50', 'bg-green-50', 'text-red-800', 'text-green-800');
+
+            const actualFmt = formatResistance(exeState.targetRawValue);
+            const actualText = `${actualFmt.num} ${actualFmt.unit} ± ${exeState.targetTolerance}%`;
+            
+            const colorNames = exeState.colors.map(c => COLORS[c].name).join(', ');
+
+            if (isValueCorrect && isTolCorrect) {
+                // Acertou
+                feedbackDiv.classList.add('bg-green-50', 'text-green-800', 'border', 'border-green-200');
+                feedbackIcon.innerHTML = `<svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+                feedbackTitle.innerText = "Excelente! Resposta Correta.";
+                feedbackText.innerHTML = `As cores eram <b>${colorNames}</b>, o que resulta em <b>${actualText}</b>.`;
+                score += 10;
+                
+                document.getElementById('btn-check').classList.add('hidden');
+                document.getElementById('btn-next').classList.remove('hidden');
+            } else {
+                // Errou
+                feedbackDiv.classList.add('bg-red-50', 'text-red-800', 'border', 'border-red-200');
+                feedbackIcon.innerHTML = `<svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
+                feedbackTitle.innerText = "Resposta Incorreta.";
+                
+                let errorMsg = "Revise seus cálculos. ";
+                if (!isValueCorrect && isTolCorrect) errorMsg += "O valor base/multiplicador está errado. ";
+                else if (isValueCorrect && !isTolCorrect) errorMsg += "O valor está certo, mas a tolerância está errada. ";
+                
+                feedbackText.innerHTML = errorMsg;
+                score = Math.max(0, score - 5);
+            }
+
+            document.getElementById('score').innerText = score;
+        }
+
+        // --- NAVEGAÇÃO ---
+        function switchTab(tab) {
+            const btnSim = document.getElementById('tab-sim');
+            const btnExe = document.getElementById('tab-exe');
+            const viewSim = document.getElementById('view-sim');
+            const viewExe = document.getElementById('view-exe');
+
+            if (tab === 'sim') {
+                btnSim.className = "px-6 py-2 rounded-md font-medium transition-colors bg-blue-600 text-white shadow";
+                btnExe.className = "px-6 py-2 rounded-md font-medium transition-colors text-slate-300 hover:text-white hover:bg-slate-700";
+                viewSim.classList.remove('hidden');
+                viewSim.classList.add('flex');
+                viewExe.classList.add('hidden');
+                viewExe.classList.remove('flex');
+            } else {
+                btnExe.className = "px-6 py-2 rounded-md font-medium transition-colors bg-blue-600 text-white shadow";
+                btnSim.className = "px-6 py-2 rounded-md font-medium transition-colors text-slate-300 hover:text-white hover:bg-slate-700";
+                viewExe.classList.remove('hidden');
+                viewExe.classList.add('flex');
+                viewSim.classList.add('hidden');
+                viewSim.classList.remove('flex');
+                
+                if (exeState.colors.length === 0) {
+                    generateExercise();
+                }
+            }
+        }
+
+        // Inicialização
+        window.onload = () => {
+            initSimulator();
+        };
+
+    </script>
+</body>
+</html>
